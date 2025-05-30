@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: service-a-app
+  labels:
+    app: service-a
+spec:
+  containers:
+  - name: service-a-app
+    image: registry.k8s.io/e2e-test-images/agnhost:2.39
+    command: ["/agnhost", "serve-hostname", "--http=true", "--port=8080"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-a-service
+spec:
+  selector:
+    app: service-a
+  ports:
+  - port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: service-a-ingress
+spec:
+  rules:
+  - host: service-a.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: service-a-service
+            port:
+              number: 8080
