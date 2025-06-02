@@ -182,6 +182,16 @@ on kind-region-b1 kind-local-multi-clusters on  main [!?]
 
 
 
+How to Resolve Multi-Node Ingress Issues
+
+Problem:
+When deploying Ingress on a multi-node kind cluster, only the control plane node exposes its container port to the host. Therefore, if the NGINX Ingress controller pod is scheduled on a different node (such as a worker node), its service will not be reachable from the user’s host.
+
+Solution:
+To overcome this, we need to allow the Ingress controller pod to be scheduled on the control plane node. The recommended way is to use taints and tolerations. Since the only node that exposes ports (via container ports mapped to the host) is the control plane, the NGINX Ingress controller should run there. This allows access to Ingress controller ports (80, 443) from the host.
+
+With this setup, we can achieve a multi-node cluster (n > 1), where each cluster has its own Ingress controller properly exposed.
+
 
 
 TBD:
