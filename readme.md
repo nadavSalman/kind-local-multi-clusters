@@ -234,6 +234,36 @@ spec:
           effect: "NoSchedule"
 ```
 
+
+
+
+
+
+
+-------------
+
+<br/>
+
+Test withou update to `/etc/hosts`
+
+
+Cluter A
+```bash
+❯ curl --resolve service-a.local:8081:127.0.0.1 http://service-a.local:8081/
+```
+
+
+
+Cluster B
+```bash
+curl --resolve service-b.local:8082:127.0.0.1 http://service-b.local:8082/
+```
+
+
+
+
+
+
 TBD:
 
  Notes

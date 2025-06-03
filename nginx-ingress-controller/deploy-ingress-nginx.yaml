@@ -505,7 +505,7 @@ spec:
           readOnly: true
       dnsPolicy: ClusterFirst
       nodeSelector:
-        kubernetes.io/os: linux
+        node-role.kubernetes.io/control-plane: ""
       serviceAccountName: ingress-nginx
       terminationGracePeriodSeconds: 0
       tolerations:
@@ -567,8 +567,6 @@ spec:
           runAsUser: 65532
           seccompProfile:
             type: RuntimeDefault
-      nodeSelector:
-        kubernetes.io/os: linux
       restartPolicy: OnFailure
       serviceAccountName: ingress-nginx-admission
 ---
@@ -621,8 +619,6 @@ spec:
           runAsUser: 65532
           seccompProfile:
             type: RuntimeDefault
-      nodeSelector:
-        kubernetes.io/os: linux
       restartPolicy: OnFailure
       serviceAccountName: ingress-nginx-admission
 ---
