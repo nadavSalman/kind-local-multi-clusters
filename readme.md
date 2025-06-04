@@ -118,28 +118,7 @@ CONTAINER ID   IMAGE                  COMMAND                  CREATED          
 eb8b157d79d3   kindest/node:v1.31.0   "/usr/local/bin/entr…"   49 minutes ago   Up 49 minutes   0.0.0.0:8081->80/tcp, 0.0.0.0:8444->443/tcp, 127.0.0.1:40429->6443/tcp   region-a1-control-plane
 
 on kind-region-b1 kind-local-multi-clusters on  main [!?] 
-❯ docker exec -it 8e311eb46f2b cat /etc/nginx/conf.d/default.conf
-server {
-    listen 80;
-    server_name service-a.local;
 
-    location / {
-        proxy_pass http://host.docker.internal:8081;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-
-server {
-    listen 80;
-    server_name service-b.local;
-
-    location / {
-        proxy_pass http://host.docker.internal:8082;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
 
 on kind-region-b1 kind-local-multi-clusters on  main [!?] 
 ❯ 
@@ -249,7 +228,7 @@ Test withou update to `/etc/hosts`
 
 Cluter A
 ```bash
-❯ curl --resolve service-a.local:8081:127.0.0.1 http://service-a.local:8081/
+curl --resolve service-a.local:8081:127.0.0.1 http://service-a.local:8081/
 ```
 
 
@@ -258,9 +237,34 @@ Cluster B
 ```bash
 curl --resolve service-b.local:8082:127.0.0.1 http://service-b.local:8082/
 ```
+❯ docker exec -it 8e311eb46f2b cat /etc/nginx/conf.d/default.conf
+server {
+    listen 80;
+    server_name service-a.local;
+
+    location / {
+        proxy_pass http://host.docker.internal:8081;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+
+server {
+    listen 80;
+    server_name service-b.local;
+
+    location / {
+        proxy_pass http://host.docker.internal:8082;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
 
 
-
+```bash
+docker run --rm -p 80:80 nginx-proxy
+```
+![alt text](image.png)
 
 
 
