@@ -237,6 +237,9 @@ Cluster B
 ```bash
 curl --resolve service-b.local:8082:127.0.0.1 http://service-b.local:8082/
 ```
+
+
+```
 ❯ docker exec -it 8e311eb46f2b cat /etc/nginx/conf.d/default.conf
 server {
     listen 80;
@@ -259,7 +262,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
     }
 }
-
+```
 
 ```bash
 docker run --rm -p 80:80 nginx-proxy
