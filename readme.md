@@ -1,6 +1,12 @@
+# Kind Multi-Clusters Environment
 
 
 
+
+
+
+
+This setup demonstrates how to run multiple local Kubernetes clusters using kind, each with its own NGINX Ingress controller, and expose their services on the host machine using a shared NGINX reverse proxy. Each cluster maps its ingress ports to unique host ports, while the reverse proxy routes requests based on hostname to the appropriate cluster. The `/etc/hosts` file or custom DNS entries are used to resolve service hostnames locally, enabling seamless access to services running in different clusters as if they were on separate domains. The diagram below illustrates the flow of requests from the client, through the reverse proxy, and into the respective Kubernetes clusters.
 
 ```mermaid
 graph LR
@@ -46,7 +52,11 @@ graph LR
 ```
 
 
+### Requirements
 
+- Docker
+- Kind
+---
 
 
 ```bash
