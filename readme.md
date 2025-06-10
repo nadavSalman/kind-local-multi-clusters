@@ -7,7 +7,7 @@
 
 
 This setup demonstrates how to run multiple local Kubernetes clusters using kind, each with its own NGINX Ingress controller, and expose their services on the host machine using a shared NGINX reverse proxy. Each cluster maps its ingress ports to unique host ports, while the reverse proxy routes requests based on hostname to the appropriate cluster. The `/etc/hosts` file or custom DNS entries are used to resolve service hostnames locally, enabling seamless access to services running in different clusters as if they were on separate domains. The diagram below illustrates the flow of requests from the client, through the reverse proxy, and into the respective Kubernetes clusters.
-
+`
 ```mermaid
 graph LR
   client["Client Request"]-.->|Request to service-a.local| nginx_proxy
@@ -49,14 +49,10 @@ graph LR
   class etc_hosts plain;
 
 
-```
+````
 
 
-### Requirements
 
-- Docker
-- Kind
----
 
 
 ```bash
@@ -239,14 +235,37 @@ Test withou update to `/etc/hosts`
 Cluter A
 ```bash
 curl --resolve service-a.local:8081:127.0.0.1 http://service-a.local:8081/
+curl --resolve 172.18.0.5:8081:127.0.0.1 http://service-a.local:8081/
 ```
-
+172.18.0.5
 
 
 Cluster B
 ```bash
-curl --resolve service-b.local:8082:127.0.0.1 http://service-b.local:8082/
+`curl --resolve service-b.local:8082:127.0.0.1 http://service-b.local:8082/
+````
+
+
+
+Updated `/ets/hosts1`
+
+```bash
+
+127.0.0.1 service-a.local
+127.0.0.1 service-b.local
+
 ```
+
+```bash
+❯ curl http://service-a.local/ && echo "" && curl http://service-b.local/
+service-a-app
+service-b-app
+on kind-region-a1 ~
+❯
+```
+
+
+
 
 
 ```
@@ -281,9 +300,31 @@ docker run --rm -p 80:80 nginx-proxy
 
 
 
-TBD:
+---
 
- Notes
-SSL Termination: If you require HTTPS support, you can configure SSL certificates in the NGINX reverse proxy to handle SSL termination.
+
+
+Alternative to the nginx-proxy laye : docker cotiner  ip ass api-server addr:
+
+
+❯ docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' region-a1-control-plane
+172.18.0.5
+
+on kind-region-a1 ~
+❯ docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' region-b1-control-plane
+172.18.0.9
+
+on kind-region-a1 ~
+❯
+
+ 
+
+
+
+### TBN:
+
+- [x] Managed to configure pods inside Cluster A to reach the ingress for a service inside Cluster B.
+
+- [x] SSL Termination: If you require HTTPS support, you can configure SSL certificates in the NGINX reverse proxy to handle SSL termination.
 
 Automation: For dynamic environments, consider using tools like nginx-proxy or Traefik that can automatically configure reverse proxies for Docker containers based on labels.
