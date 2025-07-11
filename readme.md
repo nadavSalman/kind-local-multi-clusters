@@ -7,15 +7,16 @@
 
 
 This setup demonstrates how to run multiple local Kubernetes clusters using kind, each with its own NGINX Ingress controller, and expose their services on the host machine using a shared NGINX reverse proxy. Each cluster maps its ingress ports to unique host ports, while the reverse proxy routes requests based on hostname to the appropriate cluster. The `/etc/hosts` file or custom DNS entries are used to resolve service hostnames locally, enabling seamless access to services running in different clusters as if they were on separate domains. The diagram below illustrates the flow of requests from the client, through the reverse proxy, and into the respective Kubernetes clusters.
-`
+
 ```mermaid
 graph LR
   client["Client Request"]-.->|Request to service-a.local| nginx_proxy
   client-.->|Request to service-b.local| nginx_proxy
+  client-.->|Request to service-c.local| nginx_proxy
 
   subgraph Host_Machine["Host Machine"]
     direction TB
-    etc_hosts["/etc/hosts<br>127.0.0.1 service-a.local<br>127.0.0.1 service-b.local"]
+    etc_hosts["/etc/hosts<br>127.0.0.1 service-a.local<br>127.0.0.1 service-b.local<br>127.0.0.1 service-c.local"]
     nginx_proxy["NGINX Reverse Proxy<br><i>(Listens on ports 80 & 443)</i>"]
   end
 
@@ -31,11 +32,19 @@ graph LR
     service_b["Service B"]
   end
 
+  subgraph Cluster_C["Cluster C"]
+    direction TB
+    ingress_c["NGINX Ingress Controller<br><i>(Listens on 80 & 443)</i><br>hostPort: 8083 → 80<br>hostPort: 8446 → 443"]
+    service_c["Service C"]
+  end
+
   nginx_proxy -->|Forward to port 8081| ingress_a
   nginx_proxy -->|Forward to port 8082| ingress_b
+  nginx_proxy -->|Forward to port 8083| ingress_c
 
   ingress_a --> service_a
   ingress_b --> service_b
+  ingress_c --> service_c
 
   %% Classes & styling like Kubernetes ODC theme
   classDef plain fill:#ddd,stroke:#fff,stroke-width:4px,color:#000;
@@ -44,12 +53,11 @@ graph LR
 
   class client plain;
   class nginx_proxy k8s;
-  class ingress_a,ingress_b,service_a,service_b k8s;
-  class Host_Machine,Cluster_A,Cluster_B cluster;
+  class ingress_a,ingress_b,ingress_c,service_a,service_b,service_c k8s;
+  class Host_Machine,Cluster_A,Cluster_B,Cluster_C cluster;
   class etc_hosts plain;
+```
 
-
-````
 
 
 
@@ -294,7 +302,7 @@ server {
 ```
 
 ```bash
-docker run --rm -p 80:80 nginx-proxy
+docker build -t nginx-proxy . && docker run --net=host --rm -p 80:80 nginx-proxy
 ```
 ![alt text](image.png)
 
@@ -328,3 +336,280 @@ on kind-region-a1 ~
 - [x] SSL Termination: If you require HTTPS support, you can configure SSL certificates in the NGINX reverse proxy to handle SSL termination.
 
 Automation: For dynamic environments, consider using tools like nginx-proxy or Traefik that can automatically configure reverse proxies for Docker containers based on labels.
+
+
+
+
+
+---
+## Clusters creations setups :
+
+```yaml
+❯ ./setup/local-setup.sh 
+[INFO] Creating local registry container kind-registry on port 5001...
+Unable to find image 'registry:2' locally
+2: Pulling from library/registry
+44cf07d57ee4: Pull complete 
+bbbdd6c6894b: Pull complete 
+8e82f80af0de: Pull complete 
+3493bf46cdec: Pull complete 
+6d464ea18732: Pull complete 
+Digest: sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
+Status: Downloaded newer image for registry:2
+f6ea523a8e217dfdd6c6588553c9fc170e7375d290b116c289420c845cf3c04e
+[INFO] Connecting registry to kind network...
+[INFO] Pulling registry.k8s.io/ingress-nginx/controller:v1.12.1
+v1.12.1: Pulling from ingress-nginx/controller
+f18232174bc9: Pull complete 
+6596516c3260: Pull complete 
+a745d0b9e405: Pull complete 
+d46eb76ee96b: Pull complete 
+d2275420c3b6: Pull complete 
+5cc7b5e30a50: Pull complete 
+4f4fb700ef54: Pull complete 
+280d8b867efa: Pull complete 
+c59176407fc2: Pull complete 
+6a14330bf5c4: Pull complete 
+6c429cd6f96a: Pull complete 
+8bfbec0fd7ed: Pull complete 
+3643aa58ecc5: Pull complete 
+b9fced2781ac: Pull complete 
+cd7a4d409e59: Pull complete 
+Digest: sha256:d2fbc4ec70d8aa2050dd91a91506e998765e86c96f32cffb56c503c9c34eed5b
+Status: Downloaded newer image for registry.k8s.io/ingress-nginx/controller:v1.12.1
+registry.k8s.io/ingress-nginx/controller:v1.12.1
+[INFO] Tagging registry.k8s.io/ingress-nginx/controller:v1.12.1 as localhost:5001/ingress-nginx/controller:v1.12.1
+[INFO] Pushing localhost:5001/ingress-nginx/controller:v1.12.1 to local registry
+The push refers to repository [localhost:5001/ingress-nginx/controller]
+ff58054a3da7: Pushed 
+c99a2efa7f29: Pushed 
+a956c4bc2c70: Pushed 
+ff5d99c9001f: Pushed 
+a69b043b552a: Pushed 
+9a1dc1ad87e8: Pushed 
+9a206f25d9a0: Pushed 
+03bbbdd795fb: Pushed 
+5f70bf18a086: Pushed 
+e50c2f1aabef: Pushed 
+15ad6647c798: Pushed 
+0a640871af32: Pushed 
+a68809020409: Pushed 
+ea5887115ab2: Pushed 
+08000c18d16d: Pushed 
+v1.12.1: digest: sha256:466e6b255d776c237286f013efe14da1477b172a2f444ca6806d66c9fad27111 size: 3466
+[INFO] Pulling registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.4.4
+v1.4.4: Pulling from ingress-nginx/kube-webhook-certgen
+c6b97f964990: Pull complete 
+bfb59b82a9b6: Pull complete 
+8ffb3c3cf71a: Pull complete 
+a62778643d56: Pull complete 
+7c12895b777b: Pull complete 
+33e068de2649: Pull complete 
+5664b15f108b: Pull complete 
+0bab15eea81d: Pull complete 
+4aa0ea1413d3: Pull complete 
+da7816fa955e: Pull complete 
+9aee425378d2: Pull complete 
+d711cc0b3a79: Pull complete 
+Digest: sha256:a9f03b34a3cbfbb26d103a14046ab2c5130a80c3d69d526ff8063d2b37b9fd3f
+Status: Downloaded newer image for registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.4.4
+registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.4.4
+[INFO] Tagging registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.4.4 as localhost:5001/ingress-nginx/kube-webhook-certgen:v1.4.4
+[INFO] Pushing localhost:5001/ingress-nginx/kube-webhook-certgen:v1.4.4 to local registry
+The push refers to repository [localhost:5001/ingress-nginx/kube-webhook-certgen]
+252d530f1cbe: Pushed 
+b336e209998f: Pushed 
+f4aee9e53c42: Pushed 
+1a73b54f556b: Pushed 
+2a92d6ac9e4f: Pushed 
+bbb6cacb8c82: Pushed 
+ac805962e479: Pushed 
+af5aa97ebe6c: Pushed 
+4d049f83d9cf: Pushed 
+ddc6e550070c: Pushed 
+8fa10c0194df: Pushed 
+d37950ece3d3: Pushed 
+v1.4.4: digest: sha256:6b33a8870727f3e7de55d88283cc778e1775d8099c36c45d095aa831d0f0fbc7 size: 2814
+[INFO] Deleting existing kind clusters if any...
+[INFO] Deleting cluster: region-1
+Deleting cluster "region-1" ...
+Deleted nodes: ["region-1-control-plane"]
+[INFO] Deleting cluster: region-2
+Deleting cluster "region-2" ...
+Deleted nodes: ["region-2-control-plane"]
+[INFO] Deleting cluster: region-3
+Deleting cluster "region-3" ...
+Deleted nodes: ["region-3-control-plane"]
+[INFO] Creating kind clusters...
+[INFO] Creating cluster: region-1
+[DEBUG] Cluster config for region-1:
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+containerdConfigPatches:
+- |-
+  [plugins."io.containerd.grpc.v1.cri".registry]
+    config_path = "/etc/containerd/certs.d"
+nodes:
+- role: control-plane
+  extraPortMappings:
+  - containerPort: 80
+    hostPort: 8081
+    protocol: TCP
+  - containerPort: 443
+    hostPort: 8444
+    protocol: TCP
+Creating cluster "region-1" ...
+ ✓ Ensuring node image (kindest/node:v1.33.1) 🖼
+ ✓ Preparing nodes 📦  
+ ✓ Writing configuration 📜 
+ ✓ Starting control-plane 🕹️ 
+ ✓ Installing CNI 🔌 
+ ✓ Installing StorageClass 💾 
+Set kubectl context to "kind-region-1"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-region-1
+
+Have a question, bug, or feature request? Let us know! https://kind.sigs.k8s.io/#community 🙂
+[INFO] Creating cluster: region-2
+[DEBUG] Cluster config for region-2:
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+containerdConfigPatches:
+- |-
+  [plugins."io.containerd.grpc.v1.cri".registry]
+    config_path = "/etc/containerd/certs.d"
+nodes:
+- role: control-plane
+  extraPortMappings:
+  - containerPort: 80
+    hostPort: 8082
+    protocol: TCP
+  - containerPort: 443
+    hostPort: 8445
+    protocol: TCP
+Creating cluster "region-2" ...
+ ✓ Ensuring node image (kindest/node:v1.33.1) 🖼
+ ✓ Preparing nodes 📦  
+ ✓ Writing configuration 📜 
+ ✓ Starting control-plane 🕹️ 
+ ✓ Installing CNI 🔌 
+ ✓ Installing StorageClass 💾 
+Set kubectl context to "kind-region-2"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-region-2
+
+Have a nice day! 👋
+[INFO] Creating cluster: region-3
+[DEBUG] Cluster config for region-3:
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+containerdConfigPatches:
+- |-
+  [plugins."io.containerd.grpc.v1.cri".registry]
+    config_path = "/etc/containerd/certs.d"
+nodes:
+- role: control-plane
+  extraPortMappings:
+  - containerPort: 80
+    hostPort: 8083
+    protocol: TCP
+  - containerPort: 443
+    hostPort: 8446
+    protocol: TCP
+Creating cluster "region-3" ...
+ ✓ Ensuring node image (kindest/node:v1.33.1) 🖼
+ ✓ Preparing nodes 📦  
+ ✓ Writing configuration 📜 
+ ✓ Starting control-plane 🕹️ 
+ ✓ Installing CNI 🔌 
+ ✓ Installing StorageClass 💾 
+Set kubectl context to "kind-region-3"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-region-3
+
+Have a question, bug, or feature request? Let us know! https://kind.sigs.k8s.io/#community 🙂
+[INFO] Waiting for all nodes in each cluster to be ready...
+[INFO] Checking nodes in cluster: region-1✔️
+[INFO] Checking nodes in cluster: region-2✔️
+[INFO] Checking nodes in cluster: region-3✔️
+[INFO] Configuring registry on node region-1-control-plane for region-1
+[INFO] Configuring registry on node region-2-control-plane for region-2
+[INFO] Configuring registry on node region-3-control-plane for region-3
+[INFO] Deploying ingress controllers and services...
+[INFO] Deploying ingress controller for region-1
+namespace/ingress-nginx created
+serviceaccount/ingress-nginx created
+serviceaccount/ingress-nginx-admission created
+role.rbac.authorization.k8s.io/ingress-nginx created
+role.rbac.authorization.k8s.io/ingress-nginx-admission created
+clusterrole.rbac.authorization.k8s.io/ingress-nginx created
+clusterrole.rbac.authorization.k8s.io/ingress-nginx-admission created
+rolebinding.rbac.authorization.k8s.io/ingress-nginx created
+rolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
+clusterrolebinding.rbac.authorization.k8s.io/ingress-nginx created
+clusterrolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
+configmap/ingress-nginx-controller created
+service/ingress-nginx-controller created
+service/ingress-nginx-controller-admission created
+deployment.apps/ingress-nginx-controller created
+job.batch/ingress-nginx-admission-create created
+job.batch/ingress-nginx-admission-patch created
+ingressclass.networking.k8s.io/nginx created
+validatingwebhookconfiguration.admissionregistration.k8s.io/ingress-nginx-admission created
+[INFO] Waiting for pods in ingress-nginx (context: kind-region-1) to be ready✔️
+[INFO] Deploying service application for region-1
+[INFO] Deploying ingress controller for region-2
+namespace/ingress-nginx created
+serviceaccount/ingress-nginx created
+serviceaccount/ingress-nginx-admission created
+role.rbac.authorization.k8s.io/ingress-nginx created
+role.rbac.authorization.k8s.io/ingress-nginx-admission created
+clusterrole.rbac.authorization.k8s.io/ingress-nginx created
+clusterrole.rbac.authorization.k8s.io/ingress-nginx-admission created
+rolebinding.rbac.authorization.k8s.io/ingress-nginx created
+rolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
+clusterrolebinding.rbac.authorization.k8s.io/ingress-nginx created
+clusterrolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
+configmap/ingress-nginx-controller created
+service/ingress-nginx-controller created
+service/ingress-nginx-controller-admission created
+deployment.apps/ingress-nginx-controller created
+job.batch/ingress-nginx-admission-create created
+job.batch/ingress-nginx-admission-patch created
+ingressclass.networking.k8s.io/nginx created
+validatingwebhookconfiguration.admissionregistration.k8s.io/ingress-nginx-admission created
+[INFO] Waiting for pods in ingress-nginx (context: kind-region-2) to be ready✔️
+[INFO] Deploying service application for region-2
+[INFO] Deploying ingress controller for region-3
+namespace/ingress-nginx created
+serviceaccount/ingress-nginx created
+serviceaccount/ingress-nginx-admission created
+role.rbac.authorization.k8s.io/ingress-nginx created
+role.rbac.authorization.k8s.io/ingress-nginx-admission created
+clusterrole.rbac.authorization.k8s.io/ingress-nginx created
+clusterrole.rbac.authorization.k8s.io/ingress-nginx-admission created
+rolebinding.rbac.authorization.k8s.io/ingress-nginx created
+rolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
+clusterrolebinding.rbac.authorization.k8s.io/ingress-nginx created
+clusterrolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
+configmap/ingress-nginx-controller created
+service/ingress-nginx-controller created
+service/ingress-nginx-controller-admission created
+deployment.apps/ingress-nginx-controller created
+job.batch/ingress-nginx-admission-create created
+job.batch/ingress-nginx-admission-patch created
+ingressclass.networking.k8s.io/nginx created
+validatingwebhookconfiguration.admissionregistration.k8s.io/ingress-nginx-admission created
+[INFO] Waiting for pods in ingress-nginx (context: kind-region-3) to be ready✔️
+[INFO] Deploying service application for region-3
+[INFO] Environment setup completed successfully.
+```
+
+
+
+## Successfully tested  cross clusters access :
+
+![alt text](images/image.png)
