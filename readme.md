@@ -613,3 +613,46 @@ validatingwebhookconfiguration.admissionregistration.k8s.io/ingress-nginx-admiss
 ## Successfully tested  cross clusters access :
 
 ![alt text](images/image.png)
+
+
+
+
+ArgoCD CLI auth 
+
+
+```bash
+
+kind-region-1 kind-local-multi-clusters on  main [✘!?] 
+❯ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+dCxZ9LjShSLZIlMr
+
+kind-region-1  
+❯ argocd app list --port-forward --port-forward-namespace=argocd --insecure --plaintext
+NAME  CLUSTER  NAMESPACE  PROJECT  STATUS  HEALTH  SYNCPOLICY  CONDITIONS  REPO  PATH  TARGET
+
+kind-region-1 ~ 
+❯ argocd cluster list --port-forward --port-forward-namespace=argocd --insecure --plaintext
+SERVER                          NAME        VERSION  STATUS   MESSAGE                                                  PROJECT
+https://kubernetes.default.svc  in-cluster           Unknown  Cluster has no applications and is not being monitored.  
+
+kind-region-1 ~ 
+❯ 
+```
+
+Register A Cluster 
+
+necessary when deploying to an external cluster. 
+
+```bash
+❯ kubectl config get-contexts -o name
+kind-region-1
+kind-region-2
+kind-region-3
+
+kind-region-1 kind-local-multi-clusters on  main [✘!?] 
+❯ argocd cluster list --port-forward --port-forward-namespace=argocd --insecure --plaintext
+SERVER                          NAME        VERSION  STATUS   MESSAGE                                                  PROJECT
+https://kubernetes.default.svc  in-cluster           Unknown  Cluster has no applications and is not being monitored.  
+
+```
+5

@@ -1,0 +1,71 @@
+redis-ha:
+  enabled: false
+
+controller:
+  replicas: 1
+
+repoServer:
+  replicas: 1
+
+applicationSet:
+  replicas: 1
+
+dex:
+  image:
+    repository: localhost:5001/dexidp/dex
+    tag: v2.43.1
+
+redis:
+  image:
+    repository: localhost:5001/redis
+    tag: 7.2.8-alpine
+
+server:
+  # -- Labels to be added to server pods
+  podLabels:
+    app.kubernetes.io/name: "argocd-server"
+
+  replicas: 1
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+      nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+
+
+  ingressGrpc:
+    # -- Enable an ingress resource for the Argo CD server for dedicated [gRPC-ingress]
+    enabled: false
+    # -- Additional ingress annotations for dedicated [gRPC-ingress]
+    annotations:
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+      nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+    labels: {}
+    ingressClassName: "nginx"
+
+    # -- Argo CD server hostname for dedicated [gRPC-ingress]
+    # @default -- `""` (defaults to grpc.`server.ingress.hostname`)
+    hostname: "grpc.argocd.example.com"
+
+    # -- Argo CD server ingress path for dedicated [gRPC-ingress]
+    path: /
+
+    # -- Ingress path type for dedicated [gRPC-ingress]. One of `Exact`, `Prefix` or `ImplementationSpecific`
+    pathType: Prefix
+
+
+
+
+global:
+  domain: argocd.kind.local
+  image:
+    repository: localhost:5001/argoproj/argocd # Corrected as per previous discussion
+    tag: v3.0.11                              # Corrected as per previous discussion
+
+configs:
+  params:
+    server.insecure: true
+  secret:
+    # -- Create the argocd-secret
+    createSecret: true
