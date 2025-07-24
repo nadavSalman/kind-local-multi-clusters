@@ -11,6 +11,8 @@ REGISTRY_ADDR="localhost:${REG_PORT}"
 # Template for kind cluster config (readable YAML)
 KIND_CLUSTER_TEMPLATE='kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+  apiServerAddress: "0.0.0.0"
 containerdConfigPatches:
 - |-
   [plugins."io.containerd.grpc.v1.cri".registry]
@@ -96,15 +98,10 @@ function preload_agnhost_image() {
 }
 
 function patch_deploy_ingress_yaml() {
-  # Use yq if available, else fallback to sed
-  if command -v yq &>/dev/null; then
-    yq -i '(.spec.template.spec.containers[] | select(.name == "controller").image) = "'${REGISTRY_ADDR}'/ingress-nginx/controller:v1.12.1"' nginx-ingress-controller/deploy-ingress-nginx.yaml
-    yq -i '(.spec.template.spec.containers[] | select(.name == "create" or .name == "patch").image) = "'${REGISTRY_ADDR}'/ingress-nginx/kube-webhook-certgen:v1.4.4"' nginx-ingress-controller/deploy-ingress-nginx.yaml
-  else
-    # fallback: sed replace all image lines
-    sed -i 's#registry.k8s.io/ingress-nginx/controller:[^"@ ]*[^" ]*#'${REGISTRY_ADDR}'/ingress-nginx/controller:v1.12.1#g' nginx-ingress-controller/deploy-ingress-nginx.yaml
-    sed -i 's#registry.k8s.io/ingress-nginx/kube-webhook-certgen:[^"@ ]*[^" ]*#'${REGISTRY_ADDR}'/ingress-nginx/kube-webhook-certgen:v1.4.4#g' nginx-ingress-controller/deploy-ingress-nginx.yaml
-  fi
+
+  sed -i 's#registry.k8s.io/ingress-nginx/controller:[^"@ ]*[^" ]*#'${REGISTRY_ADDR}'/ingress-nginx/controller:v1.12.1#g' nginx-ingress-controller/deploy-ingress-nginx.yaml
+  sed -i 's#registry.k8s.io/ingress-nginx/kube-webhook-certgen:[^"@ ]*[^" ]*#'${REGISTRY_ADDR}'/ingress-nginx/kube-webhook-certgen:v1.4.4#g' nginx-ingress-controller/deploy-ingress-nginx.yaml
+
 }
 
 # Default number of clusters
