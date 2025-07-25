@@ -686,6 +686,8 @@ Cluster 'https://172.18.0.4:6443' added
 It looks like using the Docker internal IP addresses for the Kind cluster API servers resolved the issue, 
 and you've successfully added kind-region-2 and kind-region-3 to your Argo CD instance.
 
+
+
 summary :
 
 # Adding External Kind Clusters to Argo CD
