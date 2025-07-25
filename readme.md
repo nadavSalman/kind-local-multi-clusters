@@ -662,11 +662,46 @@ kind-region-1 kind-local-multi-clusters on  main [✘!?]
 SERVER                          NAME        VERSION  STATUS   MESSAGE                                                  PROJECT
 https://kubernetes.default.svc  in-cluster           Unknown  Cluster has no applications and is not being monitored.  
 
+
+
+```bash
+
+kind-region-1 kind-local-multi-clusters on  main [!?] 
+❯ argocd cluster add kind-region-2 --name kind-region-2 --grpc-web
+argocd cluster add kind-region-3 --name kind-region-3 --grpc-web
+WARNING: This will create a service account `argocd-manager` on the cluster referenced by context `kind-region-2` with full cluster level privileges. Do you want to continue [y/N]? y
+{"level":"info","msg":"ServiceAccount \"argocd-manager\" already exists in namespace \"kube-system\"","time":"2025-07-24T22:49:40+03:00"}
+{"level":"info","msg":"ClusterRole \"argocd-manager-role\" updated","time":"2025-07-24T22:49:40+03:00"}
+{"level":"info","msg":"ClusterRoleBinding \"argocd-manager-role-binding\" updated","time":"2025-07-24T22:49:40+03:00"}
+Cluster 'https://172.18.0.3:6443' added
+WARNING: This will create a service account `argocd-manager` on the cluster referenced by context `kind-region-3` with full cluster level privileges. Do you want to continue [y/N]? y
+{"level":"info","msg":"ServiceAccount \"argocd-manager\" already exists in namespace \"kube-system\"","time":"2025-07-24T22:49:47+03:00"}
+{"level":"info","msg":"ClusterRole \"argocd-manager-role\" updated","time":"2025-07-24T22:49:47+03:00"}
+{"level":"info","msg":"ClusterRoleBinding \"argocd-manager-role-binding\" updated","time":"2025-07-24T22:49:47+03:00"}
+Cluster 'https://172.18.0.4:6443' added
+
 ```
 
 
+It looks like using the Docker internal IP addresses for the Kind cluster API servers resolved the issue, 
+and you've successfully added kind-region-2 and kind-region-3 to your Argo CD instance.
 
+summary :
 
+# Adding External Kind Clusters to Argo CD
+
+When running Argo CD in one Kind cluster (e.g., `kind-region-1`) and attempting to add other Kind clusters (e.g., `kind-region-2`, `kind-region-3`) as external clusters, the Argo CD server needs to be able to reach the API servers of these external clusters.
+
+The default Kind configuration exposes the API server on a random host port (e.g., `https://0.0.0.0:RANDOM_PORT`), which is not directly usable by the Argo CD pods. Using the Docker container hostnames (e.g., `region-2-control-plane`) also fails because these hostnames are not resolvable by the Argo CD server's internal DNS by default.
+
+The solution is to use the **internal Docker IP addresses** of the Kind control plane containers for the external clusters.
+
+## Action Items to Add External Kind Clusters:
+
+1.  **Identify Docker Internal IP Addresses:**
+    For each external Kind cluster's control plane container, find its Docker internal IP address.
+
+```bash
 kind-region-1 kind-local-multi-clusters on  main [!?]
 ❯ docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' region-2-control-plane
 docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' region-3-control-plane
