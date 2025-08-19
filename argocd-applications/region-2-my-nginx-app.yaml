@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: my-nginx-app
+  name: region-2-my-nginx-app
   namespace: argocd   # must be in argocd ns
 spec:
   project: default

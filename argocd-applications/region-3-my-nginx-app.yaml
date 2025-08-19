@@ -1,0 +1,21 @@
+region-2-my-nginx-app:
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: region-3-my-nginx-app
+  namespace: argocd   # must be in argocd ns
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/nadavSalman/kind-local-multi-clusters.git
+    targetRevision: HEAD
+    path: my-app-repo/manifests
+  destination:
+    server: https://172.18.0.4:6443   # pick cluster from `argocd cluster list`
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
