@@ -64,6 +64,8 @@ graph LR
 ![images/three-regions-sync.png](...)
 
 
+
+
 ```bash
 ❯ cat kind-clusters-conf/*
 kind: Cluster
