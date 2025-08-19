@@ -216,6 +216,40 @@ function deploy_ingress_and_services() {
   done
 }
 
+function argocd_prep_update_kube_config() {
+  for kind_cluster in $(kind get clusters ); do
+    if [[ "$kind_cluster" == "region-1" ]]; then
+      continue
+    fi
+    controlle_plane_contienr_name=$( docker ps | grep $kind_cluster  | awk '{print $(NF)}' )
+    api_server_addr=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$controlle_plane_contienr_name")
+    context_name="kind-$kind_cluster"
+    kubectl config set-cluster $context_name --server="https://$api_server_addr:6443"
+  done
+
+}
+
+argocd_deploy() {
+  kubectx  kind-region-1
+
+  echo "[INFO] Deploying ArgoCD..."
+  helm upgrade --install   argocd argo/argo-cd -n argocd -f argo-cd/argo-cd-values.yaml  --create-namespace
+
+  # Wait for ArgoCD pods to be ready
+  wait_for_pods_ready "kind-region-1" "argocd"
+
+  # Get the initial admin password
+  ARGOCD_PASSWORD=$(kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 --decode)
+  echo "[INFO] ArgoCD initial admin password: $ARGOCD_PASSWORD"
+
+#
+  argocd login argocd.kind.local:8081          --username admin          --password $ARGOCD_PASSWORD     --insecure          --grpc-web
+  argocd cluster add kind-region-3 --name kind-region-2
+  argocd cluster add kind-region-3 --name kind-regio n-3
+}
+
+
+
 function main() {
   ensure_local_registry
   connect_registry_to_kind_network
@@ -228,7 +262,8 @@ function main() {
   configure_registry_on_nodes
   patch_deploy_ingress_yaml
   deploy_ingress_and_services
-  echo "[INFO] Environmedeploy_ingress_and_servicesnt setup completed successfully."
+  argocd_prep_update_kube_config
+  argocd_deploy
 }
 
 main

@@ -719,7 +719,7 @@ kind-region-1 kind-local-multi-clusters on  main [!?]
 Cluster "kind-region-3" set.
 
 kind-region-1 kind-local-multi-clusters on  main [!?]
-❯ argocd cluster add kind-region-2 --name kind-region-2 --grpc-web
+❯ `argocd cluster add kind-region-2 --name kind-region-2 --grpc-web`
 argocd cluster add kind-region-3 --name kind-region-3 --grpc-web
 WARNING: This will create a service account `argocd-manager` on the cluster referenced by context `kind-region-2` with full cluster level privileges. Do you want to continue [y/N]? y
 {"level":"info","msg":"ServiceAccount \"argocd-manager\" already exists in namespace \"kube-system\"","time":"2025-07-24T22:49:40+03:00"}
@@ -733,7 +733,7 @@ WARNING: This will create a service account `argocd-manager` on the cluster refe
 Cluster 'https://172.18.0.4:6443' added
 
 kind-region-1 kind-local-multi-clusters on  main [!?] took 7s
-❯ argocd cluster list --grpc-web
+❯ `argocd cluster list --grpc-web`
 SERVER                          NAME           VERSION  STATUS      MESSAGE                                                  PROJECT
 https://172.18.0.3:6443         kind-region-2           Unknown     Cluster has no applications and is not being monitored.  
 https://172.18.0.4:6443         kind-region-3  1.33     Successful                                                           
