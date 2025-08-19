@@ -249,6 +249,7 @@ argocd_deploy() {
     --insecure \
     --grpc-web
 
+
   # Add kind-region-2
   # The context name for kind-region-2 is 'kind-region-2'
   argocd cluster add kind-region-2 --name kind-region-2 --yes --upsert
