@@ -63,6 +63,9 @@ graph LR
 
 
 
+
+![images/three-regions-sync.png](images/multy-clusters-argocd-add.png)
+
 ```bash
 ❯ cat kind-clusters-conf/*
 kind: Cluster
