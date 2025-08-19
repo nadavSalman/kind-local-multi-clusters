@@ -61,7 +61,7 @@ graph LR
 
 
 
-![images/three-regions-sync.png](...)
+![images/three-regions-sync.png](images/three-regions-sync.png)
 
 
 
