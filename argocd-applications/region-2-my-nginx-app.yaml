@@ -10,7 +10,8 @@ spec:
     targetRevision: HEAD
     path: my-app-repo/manifests
   destination:
-    server: https://172.18.0.3:6443   # pick cluster from `argocd cluster list`
+    # server: https://172.18.0.3:6443   # pick cluster from `argocd cluster list`
+    name: kind-region-2 
     namespace: default
   syncPolicy:
     automated:

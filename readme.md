@@ -346,7 +346,35 @@ Automation: For dynamic environments, consider using tools like nginx-proxy or T
 
 ---
 ## Clusters creations setups :
+### What local-setup.sh does (concise)
+This script automates creating several kind clusters, preparing a local image registry, mirroring required images, deploying NGINX ingress controllers and sample apps, and wiring host networking so each cluster's ingress is reachable from the host (via unique host ports). Major phases:
+- Ensure a local Docker registry exists and is attached to the kind network.
+- Pull required images (ingress-nginx, webhook, etc.), tag them for the local registry, and push them there.
+- Delete any previously created kind clusters (cleanup).
+- Create each kind cluster with containerd registry patches and extraPortMappings (maps cluster ingress 80/443 -> distinct host ports).
+- Wait for nodes and pods to be ready.
+- Configure the registry inside control-plane nodes so clusters pull from the local registry.
+- Deploy ingress controllers, sample applications, and ingress resources.
+- Optionally build/run the host NGINX reverse-proxy and update /etc/hosts or use curl --resolve for testing.
 
+### Summary table — function name → goal
+| Function name | Goal | Notes |
+|---|---:|---|
+| ensure_registry | Create or reuse a local Docker registry container (localhost:5001) | Keeps images local & fast |
+| connect_registry | Attach registry container to kind network(s) | So kind nodes can reach the registry by name/IP |
+| pull_and_mirror_images | Pull upstream images and push to local registry | Tags images as localhost:5001/... before push |
+| delete_existing_clusters | Remove old kind clusters (region-1..3) | Cleanup to ensure idempotence |
+| create_kind_cluster | Create a kind cluster using a generated YAML | Adds extraPortMappings for 80/443 -> host ports (8081,8082,8083 / 8444,8445,8446) and containerd registry patches |
+| wait_for_nodes_ready | Wait until all cluster nodes are Ready | Prevents racing deployments |
+| configure_registry_on_node | Configure containerd on control-plane to trust local registry | Uses containerdConfigPatches (certs.d) |
+| deploy_ingress_controller | Install ingress-nginx (namespace, SA, RBAC, Deployment, Service, IngressClass) | Uses the mirrored images from local registry |
+| wait_for_ingress_pods | Wait until ingress-nginx pods are ready | Ensures ingress ports are serving |
+| deploy_sample_apps | Deploy simple services and create Ingress resources | Creates service-a/service-b/service-c and corresponding Ingresses |
+| configure_host_proxy | Build/run nginx-proxy on host to route hostnames → host ports | Example Dockerfile + default.conf proxies to host.docker.internal:808X |
+| test_access | Validate service access (curl, --resolve, /etc/hosts) | Demonstrates host → proxy → cluster flow |
+| argocd_register_clusters | (optional) set cluster server URLs to Docker IPs and add to ArgoCD | Uses docker inspect IPs then argocd cluster add |
+
+If you want the actual function names extracted from your script, provide the script and I’ll map them precisely to the table above.
 ```yaml
 ❯ ./setup/local-setup.sh 
 [INFO] Creating local registry container kind-registry on port 5001...

@@ -230,7 +230,8 @@ function argocd_prep_update_kube_config() {
 }
 
 argocd_deploy() {
-  kubectx kind-region-1
+  # Ensure kubectl context points to region-1 (ArgoCD is installed there)
+  kubectl config use-context kind-region-1 || true
 
   echo "[INFO] Deploying ArgoCD..."
   helm upgrade --install argocd argo/argo-cd -n argocd -f argo-cd/argo-cd-values.yaml --create-namespace
@@ -239,44 +240,109 @@ argocd_deploy() {
   wait_for_pods_ready "kind-region-1" "argocd"
 
   # Get the initial admin password
-  ARGOCD_PASSWORD=$(kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 --decode)
+  ARGOCD_PASSWORD=$(kubectl -n argocd --context kind-region-1 get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 --decode)
   echo "[INFO] ArgoCD initial admin password: $ARGOCD_PASSWORD"
 
-  # Login to Argo CD - piping 'yes' for the TLS warning
-  yes | argocd login argocd.kind.local:8081 \
-    --username admin \
-    --password "$ARGOCD_PASSWORD" \
-    --insecure \
-    --grpc-web
+  # Non-interactive login to ArgoCD (suppress TLS prompt)
+  # Wait for ArgoCD HTTP to become available
+  echo "[INFO] Waiting for ArgoCD server to respond on argocd.kind.local:8081"
+  for i in {1..30}; do
+    if curl -sS --connect-timeout 2 http://argocd.kind.local:8081/healthz >/dev/null 2>&1; then
+      echo "[INFO] ArgoCD HTTP endpoint is up"
+      break
+    fi
+    echo -n "."
+    sleep 1
+  done
 
+  # Ensure any existing CLI session state is cleared to avoid invalid tokens
+  ARGODC_SESSION_FILE="$HOME/.argocd/sessions.yaml"
+  if [ -f "$ARGODC_SESSION_FILE" ]; then
+    echo "[INFO] Removing stale argocd session file"
+    rm -f "$ARGODC_SESSION_FILE" || true
+  fi
 
-  # Add kind-region-2
-  # The context name for kind-region-2 is 'kind-region-2'
-  argocd cluster add kind-region-2 --name kind-region-2 --yes --upsert
+  for i in {1..10}; do
+    if yes | argocd login argocd.kind.local:8081 \
+        --username admin --password "$ARGOCD_PASSWORD" --insecure --grpc-web; then
+      echo "[INFO] Logged into ArgoCD"
+      break
+    else
+      echo "[WARN] ArgoCD login failed, retrying... ($i)"
+      sleep 2
+    fi
+  done
 
-  # Add kind-region-3
-  # The context name for kind-region-3 is 'kind-region-3'
-  argocd cluster add kind-region-3 --name kind-region-3 --yes --upsert
+  # Wait a short moment for server to accept the session
+  sleep 2
 
-  argocd cluster list
+  # Add other clusters to ArgoCD using CLUSTERS array (skip region-1)
+  for cluster in "${CLUSTERS[@]}"; do
+    if [[ "$cluster" == "region-1" ]]; then
+      continue
+    fi
+    context_name="kind-$cluster"
+    echo "[INFO] Adding cluster $context_name to ArgoCD"
+
+    # Retry adding cluster because serviceaccount tokens may not be ready immediately
+    for attempt in {1..5}; do
+      if argocd cluster add "$context_name" --name "$context_name" --yes --upsert; then
+        echo "[INFO] Cluster $context_name added to ArgoCD"
+        break
+      else
+        echo "[WARN] Failed to add $context_name (attempt $attempt), retrying..."
+        sleep 2
+      fi
+    done
+  done
+
+  echo "[INFO] Current ArgoCD cluster list:"
+  argocd cluster list || true
 
 }
 
-
 function main() {
-#  ensure_local_registry
-#  connect_registry_to_kind_network
-#  preload_nginx_images
-#  preload_agnhost_image
-#  delete_existing_clusters
-#  create_clusters
-#  set_kind_node_sysctl
-#  wait_for_nodes_ready
-#  configure_registry_on_nodes
-#  patch_deploy_ingress_yaml
-#  deploy_ingress_and_services
+  run_nginx_proxy
+  ensure_local_registry
+  connect_registry_to_kind_network
+  preload_nginx_images
+  preload_agnhost_image
+  delete_existing_clusters
+  create_clusters
+  set_kind_node_sysctl
+  wait_for_nodes_ready
+  configure_registry_on_nodes
+  patch_deploy_ingress_yaml
+  deploy_ingress_and_services
   argocd_prep_update_kube_config
   argocd_deploy
+}
+
+function run_nginx_proxy() {
+  local image_name="nginx-proxy"
+  local container_name="nginx-proxy-local"
+
+  # Build the proxy image if it doesn't exist
+  if [[ -z "$(docker images -q ${image_name} 2>/dev/null)" ]]; then
+    echo "[INFO] Building ${image_name}..."
+    docker build -t ${image_name} ../nginx-proxy/ || docker build -t ${image_name} nginx-proxy/
+  else
+    echo "[INFO] Image ${image_name} already exists."
+  fi
+
+  # If a container with the same name is running, leave it; otherwise remove any stopped one
+  if docker ps -a --format '{{.Names}}' | grep -q "^${container_name}$"; then
+    if [[ "$(docker inspect -f '{{.State.Running}}' ${container_name})" == "true" ]]; then
+      echo "[INFO] ${container_name} already running."
+      return 0
+    else
+      echo "[INFO] Removing existing container ${container_name}"
+      docker rm ${container_name} || true
+    fi
+  fi
+
+  echo "[INFO] Running ${container_name} in detached mode (host network)..."
+  docker run -d --name ${container_name} --net=host ${image_name}
 }
 
 main
